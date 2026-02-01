@@ -156,13 +156,65 @@ def consultar(request: QueryRequest):
         raw = getattr(raw, "answer", raw)
     response_text = str(raw) if raw is not None else ""
 
+    # Generar ARGUMENTACIÓN: listado estructurado por tipo para orientar al personal
+    argumentacion = _generar_argumentacion(nodes_impacted, edges_impacted)
+
     return {
         "response": response_text,
+        "argumentacion": argumentacion,
         "impacted": {
             "nodes": nodes_impacted,
             "edges": edges_impacted,
         },
     }
+
+
+def _generar_argumentacion(nodes: list, edges: list) -> str:
+    """Genera texto de argumentación listando tratados, derechos, mecanismos, etc."""
+    if not nodes:
+        return "No se encontraron elementos en el grafo para esta consulta."
+
+    orden_tipos = [
+        ("Tratado", "Tratados"),
+        ("Derecho", "Derechos"),
+        ("Mecanismo", "Mecanismos"),
+        ("Resolución", "Resoluciones"),
+        ("Organismo", "Organismos"),
+        ("Población", "Poblaciones"),
+        ("Concepto_Jurídico", "Conceptos jurídicos"),
+        ("Órgano", "Órganos"),
+        ("País", "Países"),
+        ("Otro", "Otros"),
+    ]
+    def normalizar(s: str) -> str:
+        return s.lower().replace("_", " ").replace("í", "i").replace("ó", "o").strip()
+
+    lineas = [
+        "A partir del análisis del grafo impactado, se identifican los siguientes elementos "
+        "relevantes para orientar la labor en derechos humanos:\n"
+    ]
+    for tipo_key, etiqueta in orden_tipos:
+        tn = normalizar(tipo_key)
+        nodos_tipo = [n for n in nodes if normalizar(str(n.get("group", ""))) == tn]
+        if nodos_tipo:
+            lineas.append(f"\n{etiqueta}:")
+            for n in nodos_tipo:
+                nombre = n.get("id", n.get("label", ""))
+                desc = (n.get("description") or "").strip()
+                if desc and len(desc) < 200:
+                    lineas.append(f"  • {nombre} — {desc}")
+                else:
+                    lineas.append(f"  • {nombre}")
+
+    if edges:
+        lineas.append("\nRelaciones relevantes:")
+        for e in edges[:15]:  # Limitar a 15 relaciones
+            r = f"  • {e.get('from', '')} ↔ {e.get('to', '')}"
+            if e.get("title"):
+                r += f": {str(e['title'])[:80]}..."
+            lineas.append(r)
+
+    return "\n".join(lineas).strip()
 
 
 # Servir frontend estático

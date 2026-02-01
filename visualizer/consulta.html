@@ -109,13 +109,19 @@
     }
     .respuesta-area.vacio { color: #71717a; font-style: italic; }
     .respuesta-area .vacio { color: #71717a; font-style: italic; }
-    .respuesta-area .titulo-respuesta {
+    .respuesta-area .titulo-respuesta,
+    .respuesta-area .titulo-argumentacion {
       font-weight: 600;
       color: #a1a1aa;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
+      margin-top: 1rem;
       font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+    .respuesta-area .titulo-argumentacion { margin-top: 1rem; }
+    .respuesta-area .argumentacion {
+      padding: 0.75rem 0;
     }
     .panel-grafo {
       display: flex;
@@ -307,8 +313,14 @@
         }
         textoRespuesta = limpiarTextoExplicacion(String(textoRespuesta || ''));
         const escapado = textoRespuesta.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-        const contenido = escapado || '<span class="vacio">Sin explicación. Reinicia el servidor (python run_consulta.py) y vuelve a intentar.</span>';
-        resp.innerHTML = '<div class="titulo-respuesta">Explicación</div><div>' + contenido + '</div>';
+        const contenidoExp = escapado || '<span class="vacio">Sin explicación. Reinicia el servidor (python run_consulta.py) y vuelve a intentar.</span>';
+
+        const arg = String(json.argumentacion || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        const contenidoArg = arg || '<span class="vacio">No hay argumentación disponible.</span>';
+
+        resp.innerHTML =
+          '<div class="titulo-respuesta">Explicación</div><div>' + contenidoExp + '</div>' +
+          '<div class="titulo-argumentacion">Argumentación</div><div class="argumentacion">' + contenidoArg + '</div>';
         resp.classList.remove('loading', 'vacio');
 
         const imp = json.impacted || {};
