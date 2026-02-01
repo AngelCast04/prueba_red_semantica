@@ -1,0 +1,188 @@
+"""API FastAPI para consultas GraphRAG con visualización de grafo impactado."""
+
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+# Configuración (misma que run_quickstart.py)
+WORKING_DIR = "./grafo_libros"
+DOMAIN = (
+    "Analiza instrumentos internacionales y documentos de derechos humanos como un sistema integrado. "
+    "Identifica estructuras jerárquicas: categorías generales (poblaciones, derechos) y sus desgloses "
+    "a instrumentos, organismos, mecanismos y casos concretos."
+)
+EXAMPLE_QUERIES = [
+    "¿Qué poblaciones vulnerables y derechos se cubren en los documentos?",
+    "¿Qué instrumentos protegen a personas indígenas?",
+    "¿Cuáles son los mecanismos de la ONU para migrantes y refugiados?",
+]
+ENTITY_TYPES = [
+    "Población", "Derecho", "Tratado", "Resolución",
+    "Organismo", "Mecanismo", "Concepto_Jurídico", "País", "Órgano",
+]
+
+app = FastAPI(title="GraphRAG Consultas")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# GraphRAG se carga al iniciar (lazy para evitar errores si no hay API key)
+_grag = None
+
+
+def get_grag():
+    global _grag
+    if _grag is None:
+        from fast_graphrag import GraphRAG
+        from fast_graphrag._llm import OpenAIEmbeddingService, OpenAILLMService
+        _grag = GraphRAG(
+            working_dir=WORKING_DIR,
+            domain=DOMAIN,
+            example_queries="\n".join(EXAMPLE_QUERIES),
+            entity_types=ENTITY_TYPES,
+            config=GraphRAG.Config(
+                llm_service=OpenAILLMService(
+                    model="gpt-4o-mini",
+                    max_requests_concurrent=int(os.getenv("CONCURRENT_TASK_LIMIT", "4")),
+                    rate_limit_per_minute=True,
+                    max_requests_per_minute=30,
+                    rate_limit_concurrency=True,
+                ),
+                embedding_service=OpenAIEmbeddingService(
+                    max_requests_concurrent=4,
+                    rate_limit_per_minute=True,
+                    max_requests_per_minute=60,
+                    rate_limit_concurrency=True,
+                ),
+            ),
+        )
+    return _grag
+
+
+class QueryRequest(BaseModel):
+    query: str
+
+
+@app.get("/api/grafo")
+def get_grafo_completo():
+    """Devuelve el grafo completo en formato JSON para vis.js."""
+    import igraph as ig
+
+    graph_path = Path(WORKING_DIR) / "graph_igraph_data.pklz"
+    if not graph_path.exists():
+        raise HTTPException(status_code=404, detail="Grafo no encontrado. Ejecuta run_quickstart.py primero.")
+
+    g = ig.Graph.Read_Picklez(str(graph_path))
+    nodes = []
+    for v in g.vs:
+        attrs = v.attributes()
+        name = str(attrs.get("name", ""))
+        tipo = attrs.get("type", "Otro")
+        desc = attrs.get("description", "")
+        nodes.append({
+            "id": name,
+            "label": name[:50] + ("..." if len(name) > 50 else ""),
+            "title": f"{tipo}\n{desc}"[:500],
+            "group": tipo,
+            "description": desc,
+        })
+    edges = []
+    for e in g.es:
+        attrs = e.attributes()
+        desc = attrs.get("description", "") or ""
+        edges.append({
+            "from": g.vs[e.source]["name"],
+            "to": g.vs[e.target]["name"],
+            "label": desc[:100],
+            "title": desc,
+        })
+    return {"nodes": nodes, "edges": edges}
+
+
+@app.post("/api/query")
+def consultar(request: QueryRequest):
+    """Ejecuta una consulta y devuelve respuesta + nodos/aristas impactados."""
+    if not request.query.strip():
+        raise HTTPException(status_code=400, detail="La consulta no puede estar vacía.")
+
+    try:
+        grag = get_grag()
+        respuesta = grag.query(request.query.strip())
+    except Exception as e:
+        if "api_key" in str(e).lower() or "OPENAI" in str(e).upper():
+            raise HTTPException(
+                status_code=503,
+                detail="Configura OPENAI_API_KEY antes de consultar.",
+            )
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Extraer nodos y aristas del contexto usado
+    node_ids = {e.name for e, _ in respuesta.context.entities}
+    edges_impacted = [
+        {"from": r.source, "to": r.target, "label": (r.description or "")[:100], "title": r.description or ""}
+        for r, _ in respuesta.context.relations
+    ]
+    # Incluir nodos que aparecen en las relaciones
+    for e in edges_impacted:
+        node_ids.add(e["from"])
+        node_ids.add(e["to"])
+
+    # Obtener datos completos de nodos impactados desde el grafo
+    import igraph as ig
+
+    graph_path = Path(WORKING_DIR) / "graph_igraph_data.pklz"
+    nodes_impacted = []
+    if graph_path.exists():
+        g = ig.Graph.Read_Picklez(str(graph_path))
+        for v in g.vs:
+            name = str(v["name"])
+            if name in node_ids:
+                attrs = v.attributes()
+                tipo = attrs.get("type", "Otro")
+                desc = attrs.get("description", "")
+                nodes_impacted.append({
+                    "id": name,
+                    "label": name[:50] + ("..." if len(name) > 50 else ""),
+                    "title": f"{tipo}\n{desc}"[:500],
+                    "group": tipo,
+                    "description": desc,
+                })
+
+    raw = respuesta.response
+    if hasattr(raw, "answer"):
+        raw = getattr(raw, "answer", raw)
+    response_text = str(raw) if raw is not None else ""
+
+    return {
+        "response": response_text,
+        "impacted": {
+            "nodes": nodes_impacted,
+            "edges": edges_impacted,
+        },
+    }
+
+
+# Servir frontend estático
+VISUALIZER_DIR = Path(__file__).resolve().parent.parent / "visualizer"
+
+
+@app.get("/")
+def index():
+    return FileResponse(VISUALIZER_DIR / "consulta.html")
+
+
+@app.get("/grafo.json")
+def grafo_json():
+    """Para el visualizador estático que carga grafo.json."""
+    p = VISUALIZER_DIR / "grafo.json"
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="grafo.json no existe. Ejecuta export_grafo.py primero.")
+    return FileResponse(p)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)

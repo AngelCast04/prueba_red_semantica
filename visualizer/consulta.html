@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta GraphRAG — Derechos Humanos</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f12;
+      color: #e4e4e7;
+      min-height: 100vh;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    }
+    .panel-consulta {
+      background: #18181b;
+      border-right: 1px solid #27272a;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-consulta h2 {
+      padding: 1rem 1.25rem;
+      font-size: 1.1rem;
+      border-bottom: 1px solid #27272a;
+    }
+    .guia-leyenda {
+      padding: 0.75rem 1.25rem;
+      background: #27272a;
+      border-bottom: 1px solid #3f3f46;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .guia-leyenda .titulo-leyenda {
+      width: 100%;
+      color: #a1a1aa;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .guia-leyenda .item-leyenda {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .guia-leyenda .figura-principal {
+      width: 14px;
+      height: 14px;
+      clip-path: polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%);
+    }
+    .guia-leyenda .figura-secundario {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .input-area {
+      padding: 1rem 1.25rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    #queryInput {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 0.5rem;
+      color: #e4e4e7;
+      font-size: 0.95rem;
+    }
+    #queryInput::placeholder { color: #71717a; }
+    #queryInput:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    button {
+      padding: 0.75rem 1.25rem;
+      background: #3b82f6;
+      border: none;
+      border-radius: 0.5rem;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { background: #52525b; cursor: not-allowed; }
+    .respuesta-area {
+      flex: 1;
+      padding: 1rem 1.25rem;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .respuesta-area.vacio { color: #71717a; font-style: italic; }
+    .respuesta-area .vacio { color: #71717a; font-style: italic; }
+    .respuesta-area .titulo-respuesta {
+      font-weight: 600;
+      color: #a1a1aa;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .panel-grafo {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .grafo-header {
+      padding: 0.75rem 1.25rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .grafo-header h2 { font-size: 1rem; }
+    .grafo-header span { font-size: 0.85rem; color: #a1a1aa; }
+    #mynetwork {
+      flex: 1;
+      min-height: 300px;
+      background: #0f0f12;
+    }
+    .loading { color: #f59e0b; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="panel-consulta">
+      <h2>Consulta</h2>
+      <div class="guia-leyenda" id="leyenda">
+        <span class="titulo-leyenda">Guía de tipos de conocimiento</span>
+        <div class="item-leyenda"><span class="figura-principal" style="background:#3b82f6"></span><span>Derecho</span></div>
+        <div class="item-leyenda"><span class="figura-principal" style="background:#8b5cf6"></span><span>Tratado</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#22c55e"></span><span>Población</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#ec4899"></span><span>Resolución</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#f59e0b"></span><span>Organismo</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#06b6d4"></span><span>Mecanismo</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#84cc16"></span><span>Concepto jurídico</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#ef4444"></span><span>País</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#6366f1"></span><span>Órgano</span></div>
+        <div class="item-leyenda"><span class="figura-secundario" style="background:#71717a"></span><span>Otro</span></div>
+      </div>
+      <div class="input-area">
+        <input type="text" id="queryInput" placeholder="Ej: ¿Qué instrumentos protegen a personas indígenas?"
+          onkeydown="if(event.key==='Enter')consultar()">
+        <button id="btnConsultar" onclick="consultar()">Consultar</button>
+      </div>
+      <div class="respuesta-area vacio" id="respuesta">
+        Escribe una consulta y pulsa Consultar. El grafo mostrará las estructuras impactadas.
+      </div>
+    </div>
+    <div class="panel-grafo">
+      <div class="grafo-header">
+        <h2>Grafo impactado</h2>
+        <span id="grafoInfo">—</span>
+        <button onclick="verGrafoCompleto()">Ver grafo completo</button>
+      </div>
+      <div id="mynetwork"></div>
+    </div>
+  </div>
+
+  <script>
+    let network = null;
+    let data = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
+    const API = '';
+
+    const coloresPorTipo = {
+      Población: '#22c55e', POBLACIÓN: '#22c55e', poblacion: '#22c55e',
+      Derecho: '#3b82f6', DERECHO: '#3b82f6', derecho: '#3b82f6',
+      Tratado: '#8b5cf6', TRATADO: '#8b5cf6', tratado: '#8b5cf6',
+      Resolución: '#ec4899', RESOLUCIÓN: '#ec4899', resolucion: '#ec4899',
+      Organismo: '#f59e0b', ORGANISMO: '#f59e0b', organismo: '#f59e0b',
+      Mecanismo: '#06b6d4', MECANISMO: '#06b6d4', mecanismo: '#06b6d4',
+      Concepto_Jurídico: '#84cc16', 'Concepto_Jurídico': '#84cc16', 'CONCEPTO_JURÍDICO': '#84cc16',
+      País: '#ef4444', PAÍS: '#ef4444', pais: '#ef4444',
+      Órgano: '#6366f1', ÓRGANO: '#6366f1', organo: '#6366f1',
+      Otro: '#71717a'
+    };
+    const tiposPentagono = ['Derecho', 'DERECHO', 'Tratado', 'TRATADO'];
+
+    function colorPorTipo(tipo) {
+      if (!tipo) return coloresPorTipo.Otro;
+      const t = String(tipo).trim();
+      return coloresPorTipo[t] || coloresPorTipo[t.toLowerCase()] || coloresPorTipo.Otro;
+    }
+
+    function usaFormaPentagono(tipo) {
+      if (!tipo) return false;
+      const t = String(tipo).trim();
+      return tiposPentagono.includes(t) || tiposPentagono.map(x=>x.toLowerCase()).includes(t.toLowerCase());
+    }
+
+    function limpiarTextoExplicacion(txt) {
+      let s = String(txt || '');
+      if (!s.trim()) return s;
+      const orig = s;
+      s = s.replace(/\b[Aa]nswer\s*:?\s*/gi, '');
+      s = s.replace(/\{|\}/g, '');
+      s = s.trim();
+      return s.length > 0 ? s : orig.trim();
+    }
+
+    function prepararDatos(raw) {
+      const nodes = new vis.DataSet(
+        (raw.nodes || []).map(n => ({
+          id: n.id,
+          label: n.label,
+          title: n.title,
+          color: colorPorTipo(n.group),
+          shape: usaFormaPentagono(n.group) ? 'hexagon' : 'dot',
+          font: { size: 14, color: '#e4e4e7' }
+        }))
+      );
+      const edges = new vis.DataSet(
+        (raw.edges || []).map(e => ({
+          from: e.from,
+          to: e.to,
+          title: e.title,
+          label: e.label || '',
+          arrows: 'to',
+          color: { color: '#52525b', highlight: '#a1a1aa' }
+        }))
+      );
+      return { nodes, edges };
+    }
+
+    function dibujar(nds, eds) {
+      data.nodes.clear();
+      data.edges.clear();
+      if (nds && nds.length) data.nodes.add(nds);
+      if (eds && eds.length) data.edges.add(eds);
+
+      const container = document.getElementById('mynetwork');
+      if (!network) {
+        network = new vis.Network(container, data, {
+          nodes: { shape: 'dot', size: 18, borderWidth: 2, font: { size: 12 } },
+          edges: { width: 1.5, smooth: { type: 'continuous' } },
+          physics: {
+            enabled: true,
+            forceAtlas2Based: {
+              gravitationalConstant: -80,
+              centralGravity: 0.01,
+              springLength: 120,
+              springConstant: 0.08,
+              avoidOverlap: 0.5
+            },
+            solver: 'forceAtlas2Based',
+            stabilization: { iterations: 150 }
+          },
+          interaction: { hover: true, tooltipDelay: 200 }
+        });
+      }
+      setTimeout(() => network?.fit(), 300);
+    }
+
+    async function consultar() {
+      const input = document.getElementById('queryInput');
+      const btn = document.getElementById('btnConsultar');
+      const resp = document.getElementById('respuesta');
+      const info = document.getElementById('grafoInfo');
+
+      const q = input.value.trim();
+      if (!q) return;
+
+      btn.disabled = true;
+      resp.classList.remove('vacio', 'error');
+      resp.textContent = 'Consultando...';
+      resp.classList.add('loading');
+
+      try {
+        const res = await fetch(`${API}/api/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        const json = await res.json();
+
+        if (!res.ok) {
+          throw new Error(typeof json.detail === 'string' ? json.detail : json.detail?.msg || JSON.stringify(json.detail || 'Error'));
+        }
+
+        let textoRespuesta = '';
+        if (typeof json.response === 'string') {
+          textoRespuesta = json.response;
+        } else if (json.response && typeof json.response === 'object') {
+          textoRespuesta = json.response.answer ?? json.response.response ?? json.response.text ?? '';
+        }
+        textoRespuesta = limpiarTextoExplicacion(String(textoRespuesta || ''));
+        const escapado = textoRespuesta.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        const contenido = escapado || '<span class="vacio">Sin explicación. Reinicia el servidor (python run_consulta.py) y vuelve a intentar.</span>';
+        resp.innerHTML = '<div class="titulo-respuesta">Explicación</div><div>' + contenido + '</div>';
+        resp.classList.remove('loading', 'vacio');
+
+        const imp = json.impacted || {};
+        const raw = { nodes: imp.nodes || [], edges: imp.edges || [] };
+        const { nodes, edges } = prepararDatos(raw);
+        dibujar(
+          nodes.get().map(n => ({ ...n })),
+          edges.get().map(e => ({ ...e }))
+        );
+        info.textContent = `${raw.nodes.length} nodos · ${raw.edges.length} relaciones impactadas`;
+      } catch (err) {
+        resp.textContent = 'Error: ' + err.message;
+        resp.classList.add('error');
+        resp.classList.remove('loading');
+        info.textContent = '—';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function verGrafoCompleto() {
+      const info = document.getElementById('grafoInfo');
+      try {
+        const res = await fetch(`${API}/api/grafo`);
+        const raw = await res.json();
+        const { nodes, edges } = prepararDatos(raw);
+        dibujar(nodes.get().map(n => ({ ...n })), edges.get().map(e => ({ ...e })));
+        info.textContent = `Completo: ${raw.nodes.length} nodos · ${raw.edges.length} relaciones`;
+      } catch (e) {
+        info.textContent = 'Error al cargar grafo completo';
+      }
+    }
+
+    dibujar([], []);
+  </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualizador de Grafo - Derechos Humanos</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f12;
+      color: #e4e4e7;
+      min-height: 100vh;
+    }
+    #header {
+      padding: 1rem 1.5rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; }
+    #info {
+      font-size: 0.875rem;
+      color: #a1a1aa;
+    }
+    #controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: 1px solid #3f3f46;
+      background: #27272a;
+      color: #e4e4e7;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    button:hover { background: #3f3f46; }
+    #mynetwork {
+      width: 100%;
+      height: calc(100vh - 60px);
+      background: #0f0f12;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Grafo de conocimiento — Derechos humanos</h1>
+    <div id="info">Cargando...</div>
+    <div id="controls">
+      <button onclick="redibujar()">Reorganizar</button>
+      <button onclick="ajustarVista()">Ajustar vista</button>
+    </div>
+  </div>
+  <div id="mynetwork"></div>
+
+  <script>
+    let network = null;
+    let data = { nodes: [], edges: [] };
+
+    const coloresPorTipo = {
+      Población: '#22c55e',
+      Derecho: '#3b82f6',
+      Tratado: '#8b5cf6',
+      Resolución: '#ec4899',
+      Organismo: '#f59e0b',
+      Mecanismo: '#06b6d4',
+      Concepto_Jurídico: '#84cc16',
+      País: '#ef4444',
+      Órgano: '#6366f1',
+      Otro: '#71717a'
+    };
+
+    async function cargarGrafo() {
+      try {
+        const res = await fetch('grafo.json');
+        const raw = await res.json();
+        data = prepararDatos(raw);
+        document.getElementById('info').textContent =
+          `${data.nodes.length} nodos · ${data.edges.length} relaciones`;
+        dibujar();
+      } catch (e) {
+        document.getElementById('info').textContent =
+          'Error: ejecuta primero "python export_grafo.py"';
+        console.error(e);
+      }
+    }
+
+    function prepararDatos(raw) {
+      const nodes = new vis.DataSet(
+        raw.nodes.map(n => ({
+          id: n.id,
+          label: n.label,
+          title: n.title,
+          color: coloresPorTipo[n.group] || coloresPorTipo.Otro,
+          group: n.group,
+          font: { size: 14, color: '#e4e4e7' }
+        }))
+      );
+      const edges = new vis.DataSet(
+        raw.edges.map(e => ({
+          from: e.from,
+          to: e.to,
+          title: e.title,
+          label: e.label || '',
+          arrows: 'to',
+          color: { color: '#52525b', highlight: '#a1a1aa' }
+        }))
+      );
+      return { nodes, edges };
+    }
+
+    function dibujar() {
+      const container = document.getElementById('mynetwork');
+      const options = {
+        nodes: {
+          shape: 'dot',
+          size: 16,
+          borderWidth: 2,
+          borderWidthSelected: 3,
+          font: { size: 12 }
+        },
+        edges: {
+          width: 1.5,
+          smooth: { type: 'continuous' }
+        },
+        physics: {
+          enabled: true,
+          forceAtlas2Based: {
+            gravitationalConstant: -80,
+            centralGravity: 0.01,
+            springLength: 150,
+            springConstant: 0.08,
+            avoidOverlap: 0.5
+          },
+          solver: 'forceAtlas2Based',
+          stabilization: {
+            iterations: 150,
+            updateInterval: 25
+          }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 200,
+          zoomView: true,
+          dragView: true
+        }
+      };
+      network = new vis.Network(container, data, options);
+    }
+
+    function redibujar() {
+      if (network) {
+        network.setOptions({ physics: { enabled: true } });
+        network.stabilize();
+      }
+    }
+
+    function ajustarVista() {
+      if (network) network.fit();
+    }
+
+    cargarGrafo();
+  </script>
+</body>
+</html>
