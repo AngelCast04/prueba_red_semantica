@@ -1,9 +1,16 @@
 """Quickstart de fast-graphrag con PDFs de la carpeta libros."""
 
 import os
-import fitz  # PyMuPDF
 from pathlib import Path
 
+# Cargar .env si existe
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
+
+import fitz  # PyMuPDF
 from fast_graphrag import GraphRAG
 from fast_graphrag._llm import OpenAIEmbeddingService, OpenAILLMService
 

@@ -6,6 +6,13 @@ import sys
 # Asegurar que estamos en el directorio del proyecto
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+# Cargar variables desde .env si existe
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 if not os.getenv("OPENAI_API_KEY"):
     print("⚠️  Configura OPENAI_API_KEY antes de ejecutar:")
     print("   export OPENAI_API_KEY='sk-tu-clave'")

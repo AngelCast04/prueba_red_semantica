@@ -28,10 +28,9 @@ Esta guía te orienta para volver a abrir la aplicación después de apagar la c
    ```
    Deberías ver `(venv)` al inicio del prompt.
 
-4. Configura tu API key:
-   ```bash
-   export OPENAI_API_KEY="sk-tu-clave-aqui"
-   ```
+4. Configura tu API key (elige una opción):
+   - **Opción A:** Edita el archivo `.env` en la raíz del proyecto y escribe tu clave en `OPENAI_API_KEY=sk-tu-clave`. Así no tendrás que exportar en cada sesión.
+   - **Opción B:** En la terminal: `export OPENAI_API_KEY="sk-tu-clave-aqui"`
 
 5. Inicia el servidor:
    ```bash
