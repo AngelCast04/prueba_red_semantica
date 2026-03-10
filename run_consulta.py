@@ -2,14 +2,16 @@
 
 import os
 import sys
+from pathlib import Path
 
 # Asegurar que estamos en el directorio del proyecto
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+base_dir = Path(__file__).resolve().parent
+os.chdir(base_dir)
 
-# Cargar variables desde .env si existe
+# Cargar variables desde .env si existe (ruta explícita)
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(base_dir / ".env")
 except ImportError:
     pass
 

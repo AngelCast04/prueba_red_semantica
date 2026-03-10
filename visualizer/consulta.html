@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta GraphRAG — Derechos Humanos</title>
+  <title>Redes Semánticas para los Derechos Humanos</title>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,178 +12,275 @@
       background: #0f0f12;
       color: #e4e4e7;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    .layout {
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+    }
+    .header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e4e4e7;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      max-width: 480px;
+      min-width: 200px;
+    }
+    .header-actions input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 0.375rem;
+      color: #e4e4e7;
+      font-size: 0.9rem;
+    }
+    .header-actions input::placeholder { color: #71717a; }
+    .header-actions input:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-secondary {
+      background: #3f3f46;
+      color: #e4e4e7;
+    }
+    .btn-secondary:hover { background: #52525b; }
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Leyenda sobre el grafo — centrada y más grande */
+    .leyenda-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-size: 0.95rem;
+    }
+    .leyenda-bar .item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .leyenda-bar .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+    .leyenda-bar .dot.hex { border-radius: 0; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+
+    /* Área del grafo: contenedor principal */
+    .grafo-wrap {
+      flex: 1;
+      min-height: 58vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Mismo ancho y alto para degradado y lienzo del grafo */
+    .grafo-lienzo {
+      flex: 1;
+      min-height: 480px;
+      position: relative;
+      width: 100%;
+    }
+    .grafo-bg,
+    #mynetwork {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .grafo-bg {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(88, 28, 135, 0.22) 0%, rgba(30, 58, 138, 0.12) 40%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+        #0f0f12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    #mynetwork {
+      z-index: 1;
+    }
+    .grafo-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.35rem 1.25rem;
+      font-size: 0.8rem;
+      color: #71717a;
+      background: #18181b;
+      border-top: 1px solid #27272a;
+    }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+    /* 4 paneles inferiores */
+    .paneles {
       display: grid;
-      grid-template-columns: 400px 1fr;
-      grid-template-rows: 1fr;
-      height: 100vh;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border-top: 1px solid #27272a;
+      max-height: 280px;
+      overflow: hidden;
     }
-    @media (max-width: 900px) {
-      .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    @media (max-width: 1100px) {
+      .paneles { grid-template-columns: repeat(2, 1fr); }
     }
-    .panel-consulta {
+    @media (max-width: 600px) {
+      .paneles { grid-template-columns: 1fr; max-height: none; }
+    }
+    .panel {
       background: #18181b;
       border-right: 1px solid #27272a;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    .panel-consulta h2 {
-      padding: 1rem 1.25rem;
-      font-size: 1.1rem;
-      border-bottom: 1px solid #27272a;
-    }
-    .guia-leyenda {
-      padding: 0.75rem 1.25rem;
-      background: #27272a;
-      border-bottom: 1px solid #3f3f46;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1rem;
-      align-items: center;
-      font-size: 0.8rem;
-    }
-    .guia-leyenda .titulo-leyenda {
-      width: 100%;
-      color: #a1a1aa;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
+    .panel:last-child { border-right: none; }
+    .panel h3 {
+      padding: 0.6rem 1rem;
       font-size: 0.75rem;
+      font-weight: 600;
+      color: #a1a1aa;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #27272a;
+      flex-shrink: 0;
     }
-    .guia-leyenda .item-leyenda {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .guia-leyenda .figura-principal {
-      width: 14px;
-      height: 14px;
-      clip-path: polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%);
-    }
-    .guia-leyenda .figura-secundario {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-    .input-area {
-      padding: 1rem 1.25rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-    #queryInput {
+    .panel-content {
       flex: 1;
       padding: 0.75rem 1rem;
-      background: #27272a;
-      border: 1px solid #3f3f46;
-      border-radius: 0.5rem;
-      color: #e4e4e7;
-      font-size: 0.95rem;
-    }
-    #queryInput::placeholder { color: #71717a; }
-    #queryInput:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-    button {
-      padding: 0.75rem 1.25rem;
-      background: #3b82f6;
-      border: none;
-      border-radius: 0.5rem;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    button:hover { background: #2563eb; }
-    button:disabled { background: #52525b; cursor: not-allowed; }
-    .respuesta-area {
-      flex: 1;
-      padding: 1rem 1.25rem;
       overflow-y: auto;
-      font-size: 0.9rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
+      font-size: 0.85rem;
+      line-height: 1.5;
     }
-    .respuesta-area.vacio { color: #71717a; font-style: italic; }
-    .respuesta-area .vacio { color: #71717a; font-style: italic; }
-    .respuesta-area .titulo-respuesta,
-    .respuesta-area .titulo-argumentacion {
-      font-weight: 600;
-      color: #a1a1aa;
-      margin-bottom: 0.5rem;
-      margin-top: 1rem;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .respuesta-area .titulo-argumentacion { margin-top: 1rem; }
-    .respuesta-area .argumentacion {
-      padding: 0.75rem 0;
-    }
-    .panel-grafo {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .grafo-header {
-      padding: 0.75rem 1.25rem;
-      background: #18181b;
+    .panel-content.vacio { color: #71717a; font-style: italic; }
+    .panel-content .vacio { color: #71717a; font-style: italic; }
+    .panel-content ul { margin: 0.25rem 0 0 1rem; }
+    .panel-content li { margin-bottom: 0.2rem; }
+    .marco-tipo { margin-top: 0.5rem; }
+    .marco-tipo:first-child { margin-top: 0; }
+    .marco-tipo strong { font-size: 0.8rem; color: #a1a1aa; }
+    .marco-tipo .item { display: flex; align-items: center; gap: 0.4rem; margin: 0.25rem 0; }
+    .marco-tipo .item span:first-child { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .relacion-item {
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
       border-bottom: 1px solid #27272a;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 0.5rem;
     }
-    .grafo-header h2 { font-size: 1rem; }
-    .grafo-header span { font-size: 0.85rem; color: #a1a1aa; }
-    #mynetwork {
-      flex: 1;
-      min-height: 300px;
-      background: #0f0f12;
-    }
+    .relacion-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .relacion-item .par { font-weight: 500; color: #e4e4e7; }
+    .relacion-item .tag { display: inline-block; margin-top: 0.25rem; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; background: #27272a; color: #a1a1aa; }
+    .relacion-item .stats { font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; }
+
     .loading { color: #f59e0b; }
     .error { color: #ef4444; }
+
+    @media print {
+      .header-buttons, .leyenda-bar .item, .grafo-meta, .btn { display: none !important; }
+      .header-actions input { border: 1px solid #ccc; }
+      .grafo-bg { opacity: 0.5; }
+      .paneles { max-height: none; }
+    }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <div class="panel-consulta">
-      <h2>Consulta</h2>
-      <div class="guia-leyenda" id="leyenda">
-        <span class="titulo-leyenda">Guía de tipos de conocimiento</span>
-        <div class="item-leyenda"><span class="figura-principal" style="background:#3b82f6"></span><span>Derecho</span></div>
-        <div class="item-leyenda"><span class="figura-principal" style="background:#8b5cf6"></span><span>Tratado</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#22c55e"></span><span>Población</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#ec4899"></span><span>Resolución</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#f59e0b"></span><span>Organismo</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#06b6d4"></span><span>Mecanismo</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#84cc16"></span><span>Concepto jurídico</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#ef4444"></span><span>País</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#6366f1"></span><span>Órgano</span></div>
-        <div class="item-leyenda"><span class="figura-secundario" style="background:#71717a"></span><span>Otro</span></div>
-      </div>
-      <div class="input-area">
-        <input type="text" id="queryInput" placeholder="Ej: ¿Qué instrumentos protegen a personas indígenas?"
-          onkeydown="if(event.key==='Enter')consultar()">
-        <button id="btnConsultar" onclick="consultar()">Consultar</button>
-      </div>
-      <div class="respuesta-area vacio" id="respuesta">
-        Escribe una consulta y pulsa Consultar. El grafo mostrará las estructuras impactadas.
-      </div>
+  <header class="header">
+    <h1>Redes Semánticas para los Derechos Humanos</h1>
+    <div class="header-actions">
+      <input type="text" id="queryInput" placeholder="Escribe tu consulta y pulsa Enter o Consultar"
+        onkeydown="if(event.key==='Enter')consultar()">
+      <button class="btn btn-primary" id="btnConsultar" onclick="consultar()">Consultar</button>
     </div>
-    <div class="panel-grafo">
-      <div class="grafo-header">
-        <h2>Grafo impactado</h2>
-        <span id="grafoInfo">—</span>
-        <button onclick="verGrafoCompleto()">Ver grafo completo</button>
-      </div>
+    <div class="header-buttons">
+      <button class="btn btn-secondary" onclick="exportarPDF()">Exportar PDF</button>
+      <button class="btn btn-primary" onclick="nuevaConsulta()">Nueva consulta</button>
+    </div>
+  </header>
+
+  <div class="leyenda-bar" id="leyenda">
+    <div class="item"><span class="dot hex" style="background:#3b82f6"></span><span>Derecho</span></div>
+    <div class="item"><span class="dot hex" style="background:#8b5cf6"></span><span>Tratado</span></div>
+    <div class="item"><span class="dot" style="background:#22c55e"></span><span>Población</span></div>
+    <div class="item"><span class="dot" style="background:#ec4899"></span><span>Resolución</span></div>
+    <div class="item"><span class="dot" style="background:#f59e0b"></span><span>Organismo</span></div>
+    <div class="item"><span class="dot" style="background:#06b6d4"></span><span>Mecanismo</span></div>
+    <div class="item"><span class="dot" style="background:#84cc16"></span><span>Concepto jurídico</span></div>
+    <div class="item"><span class="dot" style="background:#ef4444"></span><span>País</span></div>
+    <div class="item"><span class="dot" style="background:#6366f1"></span><span>Órgano</span></div>
+    <div class="item"><span class="dot" style="background:#71717a"></span><span>Otro</span></div>
+  </div>
+
+  <div class="grafo-wrap">
+    <div class="grafo-lienzo">
+      <div class="grafo-bg" aria-hidden="true"></div>
       <div id="mynetwork"></div>
     </div>
+    <div class="grafo-meta">
+      <span id="grafoInfo">Realiza una consulta para ver la red de conocimiento.</span>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="centrarGrafo()">Centrar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="verGrafoCompleto()">Ver red completa</button>
+    </div>
   </div>
+
+  <section class="paneles">
+    <div class="panel">
+      <h3>Explicación</h3>
+      <div class="panel-content vacio" id="panelExplicacion">—</div>
+    </div>
+    <div class="panel">
+      <h3>Argumentación</h3>
+      <div class="panel-content vacio" id="panelArgumentacion">—</div>
+    </div>
+    <div class="panel">
+      <h3>Marco normativo</h3>
+      <div class="panel-content vacio" id="panelMarco">—</div>
+    </div>
+    <div class="panel">
+      <h3>Relaciones relevantes</h3>
+      <div class="panel-content vacio" id="panelRelaciones">—</div>
+    </div>
+  </section>
 
   <script>
     let network = null;
@@ -232,7 +329,12 @@
           id: n.id,
           label: n.label,
           title: n.title,
-          color: colorPorTipo(n.group),
+          color: {
+            background: colorPorTipo(n.group),
+            border: 'rgba(255,255,255,0.4)',
+            highlight: { background: colorPorTipo(n.group), border: '#a1a1aa' }
+          },
+          borderWidth: 2.5,
           shape: usaFormaPentagono(n.group) ? 'hexagon' : 'dot',
           font: { size: 14, color: '#e4e4e7' }
         }))
@@ -256,10 +358,14 @@
       if (nds && nds.length) data.nodes.add(nds);
       if (eds && eds.length) data.edges.add(eds);
 
+      if (network && nds && nds.length > 0) {
+        network.setOptions({ physics: { enabled: true } });
+      }
+
       const container = document.getElementById('mynetwork');
       if (!network) {
         network = new vis.Network(container, data, {
-          nodes: { shape: 'dot', size: 18, borderWidth: 2, font: { size: 12 } },
+          nodes: { size: 24, font: { size: 14 } },
           edges: { width: 1.5, smooth: { type: 'continuous' } },
           physics: {
             enabled: true,
@@ -275,23 +381,115 @@
           },
           interaction: { hover: true, tooltipDelay: 200 }
         });
+        network.on('stabilizationIterationsDone', function() {
+          network.setOptions({ physics: { enabled: false } });
+        });
       }
-      setTimeout(() => network?.fit(), 300);
+      setTimeout(() => {
+        if (!network) return;
+        network.fit({ animation: { duration: 250 } });
+        if (nds && nds.length > 0) {
+          const scale = network.getScale();
+          network.moveTo({ scale: scale * 2.2, animation: { duration: 250 } });
+        }
+      }, 400);
+    }
+
+    function centrarGrafo() {
+      if (!network) return;
+      network.fit({ animation: { duration: 300 } });
+      if (data.nodes.length > 0) {
+        const scale = network.getScale();
+        network.moveTo({ scale: scale * 2.2, animation: { duration: 250 } });
+      }
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    function renderMarcoNormativo(nodes) {
+      if (!nodes || !nodes.length) return '<span class="vacio">No hay datos.</span>';
+      const byType = {};
+      nodes.forEach(n => {
+        const g = n.group || 'Otro';
+        if (!byType[g]) byType[g] = [];
+        byType[g].push(n);
+      });
+      const orden = ['Tratado', 'Derecho', 'Resolución', 'Organismo', 'Mecanismo', 'Población', 'Concepto_Jurídico', 'Órgano', 'País', 'Otro'];
+      let html = '';
+      orden.forEach(tipo => {
+        if (!byType[tipo]) return;
+        const color = colorPorTipo(tipo);
+        html += '<div class="marco-tipo"><strong>' + esc(tipo) + '</strong>';
+        byType[tipo].slice(0, 15).forEach(n => {
+          html += '<div class="item"><span style="background:' + color + '"></span><span>' + esc(n.label || n.id) + '</span></div>';
+        });
+        if (byType[tipo].length > 15) html += '<div class="item"><span></span><span>… y ' + (byType[tipo].length - 15) + ' más</span></div>';
+        html += '</div>';
+      });
+      return html || '<span class="vacio">No hay datos.</span>';
+    }
+
+    function renderRelacionesRelevantes(edges, nodes) {
+      if (!edges || !edges.length) return '<span class="vacio">No hay relaciones.</span>';
+      const nodeCount = (nodes && nodes.length) || 0;
+      const edgeCount = edges.length;
+      const byType = {};
+      (nodes || []).forEach(n => {
+        const g = n.group || 'Otro';
+        byType[g] = (byType[g] || 0) + 1;
+      });
+      const statsStr = nodeCount + ' nodos, ' + edgeCount + ' relaciones' +
+        (byType['Tratado'] ? ', ' + byType['Tratado'] + ' tratados' : '') +
+        (byType['Derecho'] ? ', ' + byType['Derecho'] + ' derechos' : '');
+      let html = '';
+      edges.slice(0, 12).forEach(e => {
+        const fromLabel = (e.from && e.from.length > 40) ? e.from.slice(0, 40) + '…' : (e.from || '');
+        const toLabel = (e.to && e.to.length > 40) ? e.to.slice(0, 40) + '…' : (e.to || '');
+        html += '<div class="relacion-item"><div class="par">' + esc(fromLabel) + ' → ' + esc(toLabel) + '</div>';
+        if (e.title) html += '<div class="tag">' + esc(String(e.title).slice(0, 60)) + '</div>';
+        html += '<div class="stats">' + esc(statsStr) + '</div></div>';
+      });
+      if (edges.length > 12) html += '<div class="relacion-item"><span class="vacio">… y ' + (edges.length - 12) + ' relaciones más</span></div>';
+      return html;
+    }
+
+    function nuevaConsulta() {
+      document.getElementById('queryInput').value = '';
+      document.getElementById('queryInput').focus();
+      document.getElementById('panelExplicacion').innerHTML = '—';
+      document.getElementById('panelExplicacion').classList.add('vacio');
+      document.getElementById('panelArgumentacion').innerHTML = '—';
+      document.getElementById('panelArgumentacion').classList.add('vacio');
+      document.getElementById('panelMarco').innerHTML = '—';
+      document.getElementById('panelMarco').classList.add('vacio');
+      document.getElementById('panelRelaciones').innerHTML = '—';
+      document.getElementById('panelRelaciones').classList.add('vacio');
+      document.getElementById('grafoInfo').textContent = 'Realiza una consulta para ver la red de conocimiento.';
+      dibujar([], []);
+    }
+
+    function exportarPDF() {
+      window.print();
     }
 
     async function consultar() {
       const input = document.getElementById('queryInput');
       const btn = document.getElementById('btnConsultar');
-      const resp = document.getElementById('respuesta');
       const info = document.getElementById('grafoInfo');
+      const panelExp = document.getElementById('panelExplicacion');
+      const panelArg = document.getElementById('panelArgumentacion');
+      const panelMarco = document.getElementById('panelMarco');
+      const panelRel = document.getElementById('panelRelaciones');
 
       const q = input.value.trim();
       if (!q) return;
 
       btn.disabled = true;
-      resp.classList.remove('vacio', 'error');
-      resp.textContent = 'Consultando...';
-      resp.classList.add('loading');
+      panelExp.classList.remove('vacio', 'error');
+      panelExp.textContent = 'Consultando...';
+      panelExp.classList.add('loading');
 
       try {
         const res = await fetch(`${API}/api/query`, {
@@ -312,29 +510,34 @@
           textoRespuesta = json.response.answer ?? json.response.response ?? json.response.text ?? '';
         }
         textoRespuesta = limpiarTextoExplicacion(String(textoRespuesta || ''));
-        const escapado = textoRespuesta.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-        const contenidoExp = escapado || '<span class="vacio">Sin explicación. Reinicia el servidor (python run_consulta.py) y vuelve a intentar.</span>';
+        panelExp.classList.remove('loading', 'vacio');
+        panelExp.innerHTML = textoRespuesta ? esc(textoRespuesta) : '<span class="vacio">Sin explicación.</span>';
 
-        const arg = String(json.argumentacion || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-        const contenidoArg = arg || '<span class="vacio">No hay argumentación disponible.</span>';
-
-        resp.innerHTML =
-          '<div class="titulo-respuesta">Explicación</div><div>' + contenidoExp + '</div>' +
-          '<div class="titulo-argumentacion">Argumentación</div><div class="argumentacion">' + contenidoArg + '</div>';
-        resp.classList.remove('loading', 'vacio');
+        const arg = String(json.argumentacion || '');
+        panelArg.classList.remove('vacio');
+        panelArg.innerHTML = arg ? esc(arg) : '<span class="vacio">No hay argumentación.</span>';
 
         const imp = json.impacted || {};
-        const raw = { nodes: imp.nodes || [], edges: imp.edges || [] };
-        const { nodes, edges } = prepararDatos(raw);
+        const rawNodes = imp.nodes || [];
+        const rawEdges = imp.edges || [];
+        panelMarco.classList.remove('vacio');
+        panelMarco.innerHTML = renderMarcoNormativo(rawNodes);
+        panelRel.classList.remove('vacio');
+        panelRel.innerHTML = renderRelacionesRelevantes(rawEdges, rawNodes);
+
+        const { nodes, edges } = prepararDatos({ nodes: rawNodes, edges: rawEdges });
         dibujar(
           nodes.get().map(n => ({ ...n })),
           edges.get().map(e => ({ ...e }))
         );
-        info.textContent = `${raw.nodes.length} nodos · ${raw.edges.length} relaciones impactadas`;
+        info.textContent = rawNodes.length + ' nodos · ' + rawEdges.length + ' relaciones';
       } catch (err) {
-        resp.textContent = 'Error: ' + err.message;
-        resp.classList.add('error');
-        resp.classList.remove('loading');
+        panelExp.textContent = 'Error: ' + err.message;
+        panelExp.classList.add('error');
+        panelExp.classList.remove('loading');
+        panelArg.innerHTML = '—';
+        panelMarco.innerHTML = '—';
+        panelRel.innerHTML = '—';
         info.textContent = '—';
       } finally {
         btn.disabled = false;
@@ -348,13 +551,23 @@
         const raw = await res.json();
         const { nodes, edges } = prepararDatos(raw);
         dibujar(nodes.get().map(n => ({ ...n })), edges.get().map(e => ({ ...e })));
-        info.textContent = `Completo: ${raw.nodes.length} nodos · ${raw.edges.length} relaciones`;
+        info.textContent = 'Red completa: ' + raw.nodes.length + ' nodos · ' + raw.edges.length + ' relaciones';
       } catch (e) {
-        info.textContent = 'Error al cargar grafo completo';
+        info.textContent = 'Error al cargar la red';
       }
     }
 
     dibujar([], []);
+
+    window.addEventListener('resize', function() {
+      if (network && data.nodes.length > 0) {
+        setTimeout(function() {
+          network.fit();
+          var scale = network.getScale();
+          network.moveTo({ scale: scale * 2.2 });
+        }, 100);
+      }
+    });
   </script>
 </body>
 </html>
