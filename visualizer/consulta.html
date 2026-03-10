@@ -89,7 +89,7 @@
       padding: 0.75rem 1.5rem;
       background: #18181b;
       border-bottom: 1px solid #27272a;
-      font-size: 0.95rem;
+      font-size: 1.1rem;
     }
     .leyenda-bar .item {
       display: flex;
@@ -104,6 +104,14 @@
       flex-shrink: 0;
     }
     .leyenda-bar .dot.hex { border-radius: 0; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+    .leyenda-bar .item.filtro {
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      transition: background 0.15s;
+    }
+    .leyenda-bar .item.filtro:hover { background: #27272a; }
+    .leyenda-bar .item.filtro.activo { background: #3f3f46; outline: 1px solid #6366f1; }
 
     /* Área del grafo: contenedor principal */
     .grafo-wrap {
@@ -239,16 +247,17 @@
   </header>
 
   <div class="leyenda-bar" id="leyenda">
-    <div class="item"><span class="dot hex" style="background:#3b82f6"></span><span>Derecho</span></div>
-    <div class="item"><span class="dot hex" style="background:#8b5cf6"></span><span>Tratado</span></div>
-    <div class="item"><span class="dot" style="background:#22c55e"></span><span>Población</span></div>
-    <div class="item"><span class="dot" style="background:#ec4899"></span><span>Resolución</span></div>
-    <div class="item"><span class="dot" style="background:#f59e0b"></span><span>Organismo</span></div>
-    <div class="item"><span class="dot" style="background:#06b6d4"></span><span>Mecanismo</span></div>
-    <div class="item"><span class="dot" style="background:#84cc16"></span><span>Concepto jurídico</span></div>
-    <div class="item"><span class="dot" style="background:#ef4444"></span><span>País</span></div>
-    <div class="item"><span class="dot" style="background:#6366f1"></span><span>Órgano</span></div>
-    <div class="item"><span class="dot" style="background:#71717a"></span><span>Otro</span></div>
+    <div class="item filtro" data-tipo="Derecho" title="Ver solo nodos de este tipo"><span class="dot hex" style="background:#3b82f6"></span><span>Derecho</span></div>
+    <div class="item filtro" data-tipo="Tratado" title="Ver solo nodos de este tipo"><span class="dot hex" style="background:#8b5cf6"></span><span>Tratado</span></div>
+    <div class="item filtro" data-tipo="Población" title="Ver solo nodos de este tipo"><span class="dot" style="background:#22c55e"></span><span>Población</span></div>
+    <div class="item filtro" data-tipo="Resolución" title="Ver solo nodos de este tipo"><span class="dot" style="background:#ec4899"></span><span>Resolución</span></div>
+    <div class="item filtro" data-tipo="Organismo" title="Ver solo nodos de este tipo"><span class="dot" style="background:#f59e0b"></span><span>Organismo</span></div>
+    <div class="item filtro" data-tipo="Mecanismo" title="Ver solo nodos de este tipo"><span class="dot" style="background:#06b6d4"></span><span>Mecanismo</span></div>
+    <div class="item filtro" data-tipo="Concepto_Jurídico" title="Ver solo nodos de este tipo"><span class="dot" style="background:#84cc16"></span><span>Concepto jurídico</span></div>
+    <div class="item filtro" data-tipo="País" title="Ver solo nodos de este tipo"><span class="dot" style="background:#ef4444"></span><span>País</span></div>
+    <div class="item filtro" data-tipo="Órgano" title="Ver solo nodos de este tipo"><span class="dot" style="background:#6366f1"></span><span>Órgano</span></div>
+    <div class="item filtro" data-tipo="Otro" title="Ver solo nodos de este tipo"><span class="dot" style="background:#71717a"></span><span>Otro</span></div>
+    <div class="item filtro activo" data-tipo="todos" title="Mostrar todos los nodos"><span>mostrar todos</span></div>
   </div>
 
   <div class="grafo-wrap">
@@ -285,6 +294,9 @@
   <script>
     let network = null;
     let data = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
+    let fullRawNodes = [];
+    let fullRawEdges = [];
+    let filtroActivo = 'todos';
     const API = '';
 
     const coloresPorTipo = {
@@ -323,21 +335,30 @@
       return s.length > 0 ? s : orig.trim();
     }
 
-    function prepararDatos(raw) {
+    function normalizarTipoParaFiltro(s) {
+      return String(s || '').trim().toLowerCase().replace(/_/g, ' ').replace(/í/g, 'i').replace(/ó/g, 'o');
+    }
+
+    function prepararDatos(raw, posiciones) {
+      var pos = posiciones || {};
       const nodes = new vis.DataSet(
-        (raw.nodes || []).map(n => ({
-          id: n.id,
-          label: n.label,
-          title: n.title,
-          color: {
-            background: colorPorTipo(n.group),
-            border: 'rgba(255,255,255,0.4)',
-            highlight: { background: colorPorTipo(n.group), border: '#a1a1aa' }
-          },
-          borderWidth: 2.5,
-          shape: usaFormaPentagono(n.group) ? 'hexagon' : 'dot',
-          font: { size: 14, color: '#e4e4e7' }
-        }))
+        (raw.nodes || []).map(n => {
+          var obj = {
+            id: n.id,
+            label: n.label,
+            title: n.title,
+            color: {
+              background: colorPorTipo(n.group),
+              border: 'rgba(255,255,255,0.4)',
+              highlight: { background: colorPorTipo(n.group), border: '#a1a1aa' }
+            },
+            borderWidth: 2.5,
+            shape: usaFormaPentagono(n.group) ? 'hexagon' : 'dot',
+            font: { size: 14, color: '#e4e4e7' }
+          };
+          if (pos[n.id]) { obj.x = pos[n.id].x; obj.y = pos[n.id].y; }
+          return obj;
+        })
       );
       const edges = new vis.DataSet(
         (raw.edges || []).map(e => ({
@@ -404,6 +425,51 @@
       }
     }
 
+    function aplicarFiltro(tipo) {
+      if (!network) return;
+      if (!fullRawNodes || fullRawNodes.length === 0) return;
+      filtroActivo = tipo;
+      document.querySelectorAll('.leyenda-bar .item.filtro').forEach(function(el) {
+        el.classList.toggle('activo', el.getAttribute('data-tipo') === tipo);
+      });
+      var nodes = fullRawNodes;
+      var edges = fullRawEdges;
+      if (tipo !== 'todos') {
+        var ids = new Set();
+        var tipoNorm = normalizarTipoParaFiltro(tipo);
+        nodes = (fullRawNodes || []).filter(function(n) {
+          var g = (n.group || n.type || 'Otro').toString().trim();
+          var gNorm = normalizarTipoParaFiltro(g);
+          if (gNorm === tipoNorm || g === tipo) {
+            ids.add(n.id);
+            return true;
+          }
+          return false;
+        });
+        edges = (fullRawEdges || []).filter(function(e) {
+          return ids.has(e.from) && ids.has(e.to);
+        });
+      }
+      var posiciones = network.getPositions();
+      var prepared = prepararDatos({ nodes: nodes, edges: edges }, posiciones);
+      data.nodes.clear();
+      data.edges.clear();
+      if (nodes.length) data.nodes.add(prepared.nodes.get());
+      if (edges.length) data.edges.add(prepared.edges.get());
+      setTimeout(function() {
+        network.fit({ animation: { duration: 200 } });
+        if (nodes.length > 0) {
+          var scale = network.getScale();
+          network.moveTo({ scale: scale * 2.2, animation: { duration: 200 } });
+        }
+      }, 50);
+    }
+
+    document.getElementById('leyenda').addEventListener('click', function(e) {
+      var item = e.target.closest('.item.filtro');
+      if (item) aplicarFiltro(item.getAttribute('data-tipo'));
+    });
+
     function esc(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
     }
@@ -467,6 +533,11 @@
       document.getElementById('panelRelaciones').innerHTML = '—';
       document.getElementById('panelRelaciones').classList.add('vacio');
       document.getElementById('grafoInfo').textContent = 'Realiza una consulta para ver la red de conocimiento.';
+      fullRawNodes = [];
+      fullRawEdges = [];
+      filtroActivo = 'todos';
+      document.querySelectorAll('.leyenda-bar .item.filtro').forEach(el => el.classList.remove('activo'));
+      document.querySelector('.leyenda-bar .item.filtro[data-tipo="todos"]')?.classList.add('activo');
       dibujar([], []);
     }
 
@@ -520,6 +591,12 @@
         const imp = json.impacted || {};
         const rawNodes = imp.nodes || [];
         const rawEdges = imp.edges || [];
+        fullRawNodes = rawNodes;
+        fullRawEdges = rawEdges;
+        filtroActivo = 'todos';
+        document.querySelectorAll('.leyenda-bar .item.filtro').forEach(el => el.classList.remove('activo'));
+        document.querySelector('.leyenda-bar .item.filtro[data-tipo="todos"]')?.classList.add('activo');
+
         panelMarco.classList.remove('vacio');
         panelMarco.innerHTML = renderMarcoNormativo(rawNodes);
         panelRel.classList.remove('vacio');
@@ -549,9 +626,14 @@
       try {
         const res = await fetch(`${API}/api/grafo`);
         const raw = await res.json();
-        const { nodes, edges } = prepararDatos(raw);
-        dibujar(nodes.get().map(n => ({ ...n })), edges.get().map(e => ({ ...e })));
-        info.textContent = 'Red completa: ' + raw.nodes.length + ' nodos · ' + raw.edges.length + ' relaciones';
+        filtroActivo = 'todos';
+        document.querySelectorAll('.leyenda-bar .item.filtro').forEach(el => el.classList.remove('activo'));
+        document.querySelector('.leyenda-bar .item.filtro[data-tipo="todos"]')?.classList.add('activo');
+        var rawNodes = raw.nodes || [];
+        var rawEdges = raw.edges || [];
+        var prepared = prepararDatos({ nodes: rawNodes, edges: rawEdges });
+        dibujar(prepared.nodes.get().map(n => ({ ...n })), prepared.edges.get().map(e => ({ ...e })));
+        info.textContent = 'Red completa: ' + rawNodes.length + ' nodos · ' + rawEdges.length + ' relaciones';
       } catch (e) {
         info.textContent = 'Error al cargar la red';
       }
