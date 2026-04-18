@@ -1,0 +1,10 @@
+# Paquete local fast_graphrag + dependencias del pyproject.toml (poetry-core1.x en [build-system]).
+# Render: el blueprint usa `poetry install` (ver render.yaml). En local: pip install -r requirements.txt
+.
+
+# API web (no vienen en el paquete base)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Ingesta PDF (opcional en el servicio web; útil si ejecutas run_quickstart en el mismo entorno)
+pymupdf>=1.24.0

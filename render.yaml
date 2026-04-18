@@ -1,0 +1,22 @@
+# Blueprint para Render.com — https://render.com/docs/blueprint-spec
+# Un solo Web Service (Python/FastAPI): sirve la UI en / y el API en /api/* (carpeta visualizer/ incluida en el repo).
+
+services:
+  - type: web
+    name: redes-semanticas-dh
+    runtime: python
+    plan: free
+    region: oregon
+    # poetry.lock fija versiones con ruedas Linux; evita pip install . con poetry-core 2 en el entorno de build.
+    buildCommand: pip install --upgrade pip && pip install "poetry>=1.8.3,<2.0" && poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi && pip install fastapi "uvicorn[standard]" pymupdf
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: GRAPH_WORKING_DIR
+        value: ./grafo_libros
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CONCURRENT_TASK_LIMIT
+        value: "4"     

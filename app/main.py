@@ -6,11 +6,10 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# Configuración (misma que run_quickstart.py)
-WORKING_DIR = "./grafo_libros"
+# Configuración (misma que run_quickstart.py). En Render: disco persistente vía GRAPH_WORKING_DIR
+WORKING_DIR = os.getenv("GRAPH_WORKING_DIR", "./grafo_libros")
 DOMAIN = (
     "Analiza instrumentos internacionales y documentos de derechos humanos como un sistema integrado. "
     "Identifica estructuras jerárquicas: categorías generales (poblaciones, derechos) y sus desgloses "
@@ -224,6 +223,11 @@ VISUALIZER_DIR = Path(__file__).resolve().parent.parent / "visualizer"
 @app.get("/")
 def index():
     return FileResponse(VISUALIZER_DIR / "consulta.html")
+
+
+@app.get("/config.js")
+def visualizer_config():
+    return FileResponse(VISUALIZER_DIR / "config.js", media_type="application/javascript")
 
 
 @app.get("/grafo.json")

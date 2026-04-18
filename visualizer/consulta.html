@@ -291,13 +291,16 @@
     </div>
   </section>
 
+  <script src="config.js"></script>
   <script>
     let network = null;
     let data = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
     let fullRawNodes = [];
     let fullRawEdges = [];
     let filtroActivo = 'todos';
-    const API = '';
+    const API = (typeof window.__API_BASE__ === 'string'
+      ? String(window.__API_BASE__).replace(/\/$/, '')
+      : '');
 
     const coloresPorTipo = {
       Población: '#22c55e', POBLACIÓN: '#22c55e', poblacion: '#22c55e',
