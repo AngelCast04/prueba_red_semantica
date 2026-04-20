@@ -131,6 +131,9 @@ El repositorio incluye `render.yaml` (Blueprint) listo para crear un servicio we
 
 La interfaz `visualizer/consulta.html` se sirve desde el mismo backend en `/`.
 
+> Nota: el `render.yaml` actual esta preparado para `plan: free`, por lo que no usa disco persistente.
+> Si cambias a un plan pago, puedes volver a agregar `disk` y apuntar `GRAPH_WORKING_DIR` a `/var/data/grafo_libros`.
+
 ### Variables de entorno requeridas
 
 En Render debes definir como minimo:
@@ -140,9 +143,11 @@ En Render debes definir como minimo:
   - `https://redes-semanticas-dh.onrender.com`
   - o varios dominios separados por coma.
 
-El backend usa disco persistente montado en `/var/data` y guarda el grafo en:
+Para plan gratuito, el backend guarda el grafo en:
 
-- `GRAPH_WORKING_DIR=/var/data/grafo_libros`
+- `GRAPH_WORKING_DIR=./grafo_libros`
+
+En free tier ese almacenamiento es efimero (puede perderse en reinicios/redeploy), por lo que puede ser necesario volver a ejecutar la ingesta.
 
 ### Primer arranque (ingesta de PDFs)
 
@@ -152,7 +157,7 @@ Despues del primer deploy, ejecuta una vez en el Shell del servicio backend:
 python run_quickstart.py
 ```
 
-Esto construye el grafo en el disco persistente. Desde ese momento no se pierde en reinicios o nuevos deploys.
+Esto construye el grafo en el almacenamiento del servicio actual.
 
 ### Verificacion rapida
 

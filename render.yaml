@@ -10,15 +10,11 @@ services:
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
-    disk:
-      name: graphrag-data
-      mountPath: /var/data
-      sizeGB: 5
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
       - key: GRAPH_WORKING_DIR
-        value: /var/data/grafo_libros
+        value: ./grafo_libros
       - key: OPENAI_API_KEY
         sync: false
       - key: CORS_ORIGINS
