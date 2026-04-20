@@ -7,16 +7,22 @@ services:
     runtime: python
     plan: free
     region: oregon
-    # poetry.lock fija versiones con ruedas Linux; evita pip install . con poetry-core 2 en el entorno de build.
-    buildCommand: pip install --upgrade pip && pip install "poetry>=1.8.3,<2.0" && poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi && pip install fastapi "uvicorn[standard]" pymupdf
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
+    disk:
+      name: graphrag-data
+      mountPath: /var/data
+      sizeGB: 5
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
       - key: GRAPH_WORKING_DIR
-        value: ./grafo_libros
+        value: /var/data/grafo_libros
       - key: OPENAI_API_KEY
         sync: false
+      - key: CORS_ORIGINS
+        sync: false
       - key: CONCURRENT_TASK_LIMIT
-        value: "4"     
+        value: "4"
+

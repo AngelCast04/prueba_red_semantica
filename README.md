@@ -123,6 +123,47 @@ En la carpeta `examples/` del upstream hay tutoriales (`custom_llm.py`, notebook
 
 ---
 
+## Despliegue en Render
+
+El repositorio incluye `render.yaml` (Blueprint) listo para crear un servicio web:
+
+- `redes-semanticas-dh` (FastAPI en Python)
+
+La interfaz `visualizer/consulta.html` se sirve desde el mismo backend en `/`.
+
+### Variables de entorno requeridas
+
+En Render debes definir como minimo:
+
+- `OPENAI_API_KEY`.
+- `CORS_ORIGINS` (recomendado en produccion), por ejemplo:
+  - `https://redes-semanticas-dh.onrender.com`
+  - o varios dominios separados por coma.
+
+El backend usa disco persistente montado en `/var/data` y guarda el grafo en:
+
+- `GRAPH_WORKING_DIR=/var/data/grafo_libros`
+
+### Primer arranque (ingesta de PDFs)
+
+Despues del primer deploy, ejecuta una vez en el Shell del servicio backend:
+
+```bash
+python run_quickstart.py
+```
+
+Esto construye el grafo en el disco persistente. Desde ese momento no se pierde en reinicios o nuevos deploys.
+
+### Verificacion rapida
+
+Tras desplegar:
+
+- abre `/` para cargar la interfaz.
+- prueba `GET /api/grafo` (debe devolver nodos/aristas una vez generado el grafo).
+- prueba `POST /api/query` con una consulta.
+
+---
+
 ## Licencia
 
 Este proyecto incluye código bajo **MIT License** (ver [LICENSE](LICENSE)), en línea con Fast GraphRAG.

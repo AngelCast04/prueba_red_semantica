@@ -25,8 +25,26 @@ ENTITY_TYPES = [
     "Organismo", "Mecanismo", "Concepto_Jurídico", "País", "Órgano",
 ]
 
+
+def _get_cors_origins() -> list[str]:
+    """Resuelve CORS_ORIGINS desde env (CSV) o usa wildcard por defecto."""
+    raw = os.getenv("CORS_ORIGINS", "*").strip()
+    if raw == "*":
+        return ["*"]
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return origins or ["*"]
+
+
+CORS_ORIGINS = _get_cors_origins()
+
 app = FastAPI(title="GraphRAG Consultas")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 
 # GraphRAG se carga al iniciar (lazy para evitar errores si no hay API key)
 _grag = None
