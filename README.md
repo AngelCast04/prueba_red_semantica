@@ -147,17 +147,17 @@ Para plan gratuito, el backend guarda el grafo en:
 
 - `GRAPH_WORKING_DIR=./grafo_libros`
 
-En free tier ese almacenamiento es efimero (puede perderse en reinicios/redeploy), por lo que puede ser necesario volver a ejecutar la ingesta.
+En free tier ese almacenamiento es efimero (puede perderse en reinicios/redeploy), por lo que puede ser necesario volver a desplegar para regenerar el grafo.
 
-### Primer arranque (ingesta de PDFs)
+### Ingesta en plan gratuito (sin Shell)
 
-Despues del primer deploy, ejecuta una vez en el Shell del servicio backend:
+En `plan: free` Render no ofrece Shell. Por eso `render.yaml` ejecuta `python run_quickstart.py` al final del **buildCommand**.
 
-```bash
-python run_quickstart.py
-```
+- Debes tener **PDFs** en la carpeta `libros/` versionada en el repo (o el build no tendra texto que indexar).
+- `OPENAI_API_KEY` debe estar definida en el servicio: en Render suele estar disponible tambien durante el **build** (necesaria para la ingesta).
+- El primer build puede tardar bastante (llamadas a OpenAI). Cada redeploy vuelve a ejecutar la ingesta salvo que cambies el flujo (plan Starter con Shell, o disco persistente).
 
-Esto construye el grafo en el almacenamiento del servicio actual.
+Si pasas a un plan con Shell, puedes quitar `run_quickstart.py` del `buildCommand` y ejecutar la ingesta manualmente cuando quieras.
 
 ### Verificacion rapida
 

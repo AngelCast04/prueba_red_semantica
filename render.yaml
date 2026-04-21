@@ -1,5 +1,8 @@
 # Blueprint para Render.com — https://render.com/docs/blueprint-spec
 # Un solo Web Service (Python/FastAPI): sirve la UI en / y el API en /api/* (carpeta visualizer/ incluida en el repo).
+#
+# Plan free: no hay Shell en Render, asi que la ingesta corre en buildCommand.
+# Requiere OPENAI_API_KEY en el servicio (disponible en build) y PDFs en libros/.
 
 services:
   - type: web
@@ -7,7 +10,7 @@ services:
     runtime: python
     plan: free
     region: oregon
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt && python run_quickstart.py
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
     envVars:
