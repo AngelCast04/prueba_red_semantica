@@ -3,6 +3,18 @@
 import os
 from pathlib import Path
 
+# Raíz del repo (build en Render puede tener cwd distinto al runtime de uvicorn)
+_ROOT = Path(__file__).resolve().parent
+
+
+def _resolve_dir(env_key: str, default_relative: str) -> str:
+    raw = (os.getenv(env_key) or default_relative).strip() or default_relative
+    p = Path(raw)
+    if p.is_absolute():
+        return str(p)
+    return str((_ROOT / p).resolve())
+
+
 # Cargar .env si existe
 try:
     from dotenv import load_dotenv
@@ -65,8 +77,11 @@ ENTITY_TYPES = [
 
 # Límites de tasa para evitar error 429 (Rate limit exceeded)
 # Ajusta según tu plan en platform.openai.com/account/rate-limits
+_WORKDIR = _resolve_dir("GRAPH_WORKING_DIR", "grafo_libros")
+_LIBROS = _resolve_dir("LIBROS_DIR", "libros")
+
 grag = GraphRAG(
-    working_dir="./grafo_libros",
+    working_dir=_WORKDIR,
     domain=DOMAIN,
     example_queries="\n".join(EXAMPLE_QUERIES),
     entity_types=ENTITY_TYPES,
@@ -117,7 +132,7 @@ def bucle_consultas():
             print(f"\nError: {e}")
 
 
-texto = cargar_pdfs_carpeta("./libros")
+texto = cargar_pdfs_carpeta(_LIBROS)
 grag.insert(texto)
 
 print("\n¡Grafos cargados! Iniciando modo consulta...")

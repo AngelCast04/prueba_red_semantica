@@ -143,9 +143,9 @@ En Render debes definir como minimo:
   - `https://redes-semanticas-dh.onrender.com`
   - o varios dominios separados por coma.
 
-Para plan gratuito, el backend guarda el grafo en:
+Para plan gratuito, el backend guarda el grafo en (ruta relativa a la raíz del repo, no al cwd del proceso):
 
-- `GRAPH_WORKING_DIR=./grafo_libros`
+- `GRAPH_WORKING_DIR=grafo_libros` (o `./grafo_libros`; se resuelve igual)
 
 En free tier ese almacenamiento es efimero (puede perderse en reinicios/redeploy), por lo que puede ser necesario volver a desplegar para regenerar el grafo.
 

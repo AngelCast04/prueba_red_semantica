@@ -8,8 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+# Raíz del proyecto (no depender del cwd de uvicorn en Render/Docker)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _resolve_working_dir() -> str:
+    """GRAPH_WORKING_DIR relativo a la raíz del repo; evita fallos si el cwd no es el proyecto."""
+    raw = (os.getenv("GRAPH_WORKING_DIR") or "grafo_libros").strip() or "grafo_libros"
+    p = Path(raw)
+    if p.is_absolute():
+        return str(p)
+    return str((_PROJECT_ROOT / p).resolve())
+
+
 # Configuración (misma que run_quickstart.py). En Render: disco persistente vía GRAPH_WORKING_DIR
-WORKING_DIR = os.getenv("GRAPH_WORKING_DIR", "./grafo_libros")
+WORKING_DIR = _resolve_working_dir()
 DOMAIN = (
     "Analiza instrumentos internacionales y documentos de derechos humanos como un sistema integrado. "
     "Identifica estructuras jerárquicas: categorías generales (poblaciones, derechos) y sus desgloses "
@@ -166,6 +179,23 @@ def consultar(request: QueryRequest):
                     "title": f"{tipo}\n{desc}"[:500],
                     "group": tipo,
                     "description": desc,
+                })
+
+    # Si hay relaciones pero no nodos (p. ej. ruta al pkl distinta o ids no coinciden), dibujar al menos extremos
+    if not nodes_impacted and edges_impacted:
+        seen: set[str] = set()
+        for e in edges_impacted:
+            for k in ("from", "to"):
+                nid = e.get(k)
+                if not nid or nid in seen:
+                    continue
+                seen.add(nid)
+                nodes_impacted.append({
+                    "id": nid,
+                    "label": nid[:50] + ("..." if len(nid) > 50 else ""),
+                    "title": "Otro",
+                    "group": "Otro",
+                    "description": "",
                 })
 
     raw = respuesta.response
