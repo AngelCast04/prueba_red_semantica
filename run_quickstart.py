@@ -1,6 +1,7 @@
 """Quickstart de fast-graphrag con PDFs de la carpeta libros."""
 
 import os
+import sys
 from pathlib import Path
 
 # Raíz del repo (build en Render puede tener cwd distinto al runtime de uvicorn)
@@ -133,7 +134,15 @@ def bucle_consultas():
 
 
 texto = cargar_pdfs_carpeta(_LIBROS)
-grag.insert(texto)
+if not texto.strip():
+    raise RuntimeError(f"No se encontró texto para ingesta en {_LIBROS}. Verifica que existan PDFs válidos.")
 
-print("\n¡Grafos cargados! Iniciando modo consulta...")
-bucle_consultas()
+grag.insert(texto)
+print("\n¡Grafos cargados!")
+
+# En Render/build no hay stdin interactivo: evitar EOF en input().
+if sys.stdin.isatty():
+    print("Iniciando modo consulta...")
+    bucle_consultas()
+else:
+    print("Entorno no interactivo detectado; se omite el modo consulta.")
